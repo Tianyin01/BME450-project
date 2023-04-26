@@ -17,9 +17,9 @@ from tensorflow.keras.callbacks import *
 from tensorflow.keras.applications.efficientnet import *
 
 
-image_dir = Path('archive/Images')
+image_dir = Path('archive/Images1')
 
-filepaths = list(image_dir.glob(r'**/*.jpg'))
+filepaths = list(image_dir.glob(r'**/*.png'))
 labels = list(map(lambda x: os.path.split(os.path.split(x)[0])[1], filepaths))
 
 filepaths = pd.Series(filepaths, name='Filepath').astype(str)
@@ -36,8 +36,8 @@ image_df = image_df.sample(frac=1).reset_index(drop = True)
 # plt.tight_layout()
 # plt.show()
 
-train_df, test_df = train_test_split(image_df, train_size=0.8, shuffle=True, random_state=1)
-valid_df, test_df_new = train_test_split(test_df, train_size=0.5, shuffle=True, random_state=1)
+train_df,test_df=train_test_split(image_df,train_size=0.8,shuffle=True,random_state=1,stratify=image_df['Label'])
+valid_df,test_df_new=train_test_split(test_df,train_size=0.5,shuffle=True,random_state=1,stratify=test_df['Label'])
 
 train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
     rescale=1./255,
@@ -97,7 +97,7 @@ x = tf.keras.layers.MaxPool2D(2,2)(x)
 x = tf.keras.layers.Conv2D(filters=128, kernel_size=(3, 3), activation='relu')(x)
 x = tf.keras.layers.MaxPool2D(2,2)(x)
 
-x = tf.keras.layers.Dropout(0.2)(x)
+x = tf.keras.layers.Dropout(0.5)(x)
 x = tf.keras.layers.Flatten()(x)
 x = tf.keras.layers.Dense(256, activation='relu')(x)
 x = tf.keras.layers.Dense(256, activation='relu')(x)
@@ -115,23 +115,22 @@ checkpoint_path = 'models/models/Mymodel.h5'
 
 callbacks = [
     EarlyStopping(monitor='val_loss', mode='min', patience=15, verbose=1),
-    ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.05, patience=8, min_lr=0.000001, verbose=1),
+    ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.05, patience=5, min_lr=0.000001, verbose=1),
     ModelCheckpoint(monitor='val_loss', mode='min', filepath=checkpoint_path, verbose=1, save_best_only=True, save_weights_only=False)
 ]
-
 
 history = model.fit(
     train_images,
     validation_data=val_images,
-    epochs=50,
+    epochs=30,
     callbacks=callbacks
 )
 train_loss = history.history["loss"]
 val_loss = history.history["val_loss"]
 results = model.evaluate(test_images, verbose=0)
 
-# print("    Test Loss: {:.5f}".format(results[0]))
-# print("Test Accuracy: {:.2f}%".format(results[1] * 100))
+print("    Test Loss: {:.5f}".format(results[0]))
+print("Test Accuracy: {:.2f}%".format(results[1] * 100))
 pred = model.predict(test_images)
 pred = np.argmax(pred,axis=1)
 
@@ -159,5 +158,16 @@ epoch_array = np.arange(1,len(train_loss)+1,1,dtype=int)
 plt.plot(epoch_array, train_loss, label = 'Train')
 plt.plot(epoch_array, val_loss, label='Validation')
 plt.title('Loss')
+plt.legend()
+plt.show()
+
+train_accuracy=history.history["accuracy"]
+val_accuracy=history.history['val_accuracy']
+
+plt.show()
+epoch_array=np.arange(1,len(train_accuracy)+1,1,dtype=int)
+plt.plot(epoch_array, train_accuracy,label='Train')
+plt.plot(epoch_array, val_accuracy,label='Validation')
+plt.title('Accuracy')
 plt.legend()
 plt.show()
